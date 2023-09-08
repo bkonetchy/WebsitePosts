@@ -4,10 +4,31 @@ author: "Brant Konetchy"
 date: "2023-09-06"
 categories: ["R"]
 tags: ["R", "leaflet", "GTFS"]
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+
+library(sf)
+library(dplyr)
+library(leaflet)
+library(data.table)
+
+# load gtfs file
+gtfs <- gtfstools::read_gtfs(path = "../../Datasets/post2_gtfs.zip")
+
+NUTS <- st_read(dsn = "../../Datasets/NUTS_RG_01M_2021_4326.shp", 
+                layer = "NUTS_RG_01M_2021_4326") %>% 
+  filter(LEVL_CODE == 3) %>% 
+  filter(CNTR_CODE == "DE") %>% 
+  filter(NUTS_NAME == "Berlin") %>%
+  st_transform(crs = 3035) %>% # convert to projected meter system covering germany
+  st_buffer(dist = 5000) %>% # extract extra area round berlin by 5 km
+  st_transform(crs = "WGS84") # convert back to WGS84
+
+leaflet() %>%
+  addTiles() %>%
+  addPolygons(data = NUTS)
 ```
 
 # GTFS Schedule Viewer
@@ -28,17 +49,17 @@ This post will go through how to process a GTFS file in order to view the result
 
 Any GTFS feed can be used, but in this example I will be using the Germany wide GTFS feed produced by DELFI ([GTFS Germany](https://www.opendata-oepnv.de/fileadmin/datasets/delfi/20230904_fahrplaene_gesamtdeutschland_gtfs.zip)) and extracting the data that intersects Berlin. For the Berlin boarder shape I downloaded the [NUTS dataset](https://ec.europa.eu/eurostat/web/gisco/geodata/reference-data/administrative-units-statistical-units/nuts). Warning for a large GTFS file it can take up to a few minutes to read in the GTFS feed.
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, eval=FALSE}
 library(sf)
 library(dplyr)
 library(leaflet)
 library(data.table)
 
 # read in gtfs feed
-gtfs <- tidytransit::read_gtfs(path = "../../../../Datasets/20230904_fahrplaene_gesamtdeutschland_gtfs.zip")
+gtfs <- tidytransit::read_gtfs(path = "../../Datasets/20230904_fahrplaene_gesamtdeutschland_gtfs.zip")
 
 # read in NUTS polylines and filter to berlin
-NUTS <- st_read(dsn = "../../../../Datasets/NUTS_RG_01M_2021_4326.shp", 
+NUTS <- st_read(dsn = "../../Datasets/NUTS_RG_01M_2021_4326.shp", 
                 layer = "NUTS_RG_01M_2021_4326") %>% 
   filter(LEVL_CODE == 3) %>% 
   filter(CNTR_CODE == "DE") %>% 
@@ -47,6 +68,10 @@ NUTS <- st_read(dsn = "../../../../Datasets/NUTS_RG_01M_2021_4326.shp",
   st_buffer(dist = 5000) %>% # extract extra area round berlin by 5 km
   st_transform(crs = "WGS84") # convert back to WGS84
 
+
+```
+
+```{r, out.width="100%"}
 # take a look at the area we want to extract
 leaflet() %>%
   addTiles() %>%
@@ -57,7 +82,7 @@ leaflet() %>%
 
 When working with GTFS, I found it generally more useful to filter for an exact date rather then just a generic day during the week. The main reason for this is that a route can have minimal or drastic changes depending on planned construction projects. By selecting an exact date we can evaluate the route to see if it is going on the attended "normal" path or if it is being deviated for some reason. This can be especially important if the GTFS feed is being using with routing software like that in the R5R package. The R5R package requires a single day to run the routing analysis, so we want to ensure that that day chose aligns with what we expect travelers to use or we want them to use. This can lead to some odd coding decisions in this case, in which I will switch between two different GTFS processing packages (gtfsools) and (tidytransit). In the first step I used tidytransit to read in the dataset so that I could use the filter by exact day function. This causes the initial load time to be longer as tidytransit generally takes longer to read in GTFS files as gtfstools. However, after we finish the filter by day, we want to convert to the gtftools data type for the rest of the analysis. Luckily, both packages come with converters making it easy to switch back and forth between the two. Generally I would also advise to work with smaller feeds due to the time cost of filtering larger feeds, but when not possible its best to filter out as much data as possible before performing the spatial filter as I do here. In this example the size of the dataset decresses drastically from each filter with a starting size of 2.9 gb and ending at about 104 mb.
 
-```{r}
+```{r eval=FALSE}
 # filter by date
 gtfs <- tidytransit::filter_feed_by_date(gtfs_obj = gtfs, 
                                          extract_date = "2023-10-17")
@@ -150,7 +175,8 @@ library(reactable)
 stop_times_0_wide <- data.table::dcast.data.table(data = stop_times_0, formula = stop_order+stop_name ~ trip_order, value.var = "arrival_time")
 
 # view the results in a nice table
-reactable(data = stop_times_0_wide, pagination = F, height = 600)
+reactable(data = stop_times_0_wide, pagination = F, height = 600, 
+          theme = reactableTheme(color = "black"))
 
 
 ```
