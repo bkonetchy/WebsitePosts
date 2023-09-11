@@ -109,6 +109,30 @@ stop_ids_1 <- route_222$stop_times[trip_id %in% trip_ids_1]$stop_id
 stop_times_0 <- route_222$stop_times[trip_id %in% trip_ids_0]
 stop_times_1 <- route_222$stop_times[trip_id %in% trip_ids_1]
 
+# stop parent ids, if they are listed in the gtfs we can use, if not we can create ourselves useing the german station id system
+stop_parent_ids <- gtfstools::get_parent_station(gtfs = route_222)
+stop_parent_ids
+# parent stations do not extis so we will create ourselves
+stop_parent_ids_0 <- data.table("stop_id" = stop_ids_0,
+                                "parent_id" = lapply(X = stop_ids_0, 
+                                                     FUN = function(x) {
+                                                       stringr::str_split_1(string = x, 
+                                                                            pattern = "::")}) %>% 
+                                  do.call(rbind, .) %>% 
+                                  as.data.frame() %>% 
+                                  select(1)) %>%
+  distinct()
+
+stop_parent_ids_1 <- data.table("stop_id" = stop_ids_1,
+                                "parent_id" = lapply(X = stop_ids_1, 
+                                                     FUN = function(x) {
+                                                       stringr::str_split_1(string = x, 
+                                                                            pattern = "::")}) %>% 
+                                  do.call(rbind, .) %>% 
+                                  as.data.frame() %>% 
+                                  select(1)) %>%
+  distinct()
+
 ```
 
 ## Step 4: Produce the Final Time Table
@@ -120,9 +144,25 @@ Now that we have the time table data components extracted, lets put them togethe
 This section of code finds the earliest arrival time for every stop and then orders it from the earliest time. We then add a new column with the order of the earliest to latest stop arrival.
 
 ```{r}
-stop_order_0 <- stop_times_0[,.("arrival_time" = min(arrival_time)), stop_id][order(arrival_time)]
+stop_order_0 <- stop_times_0[,.("arrival_time" = min(arrival_time)), stop_id]
+# merge in parent ids and reorder only using parent ids
+stop_order_0 <- merge(stop_order_0, stop_parent_ids_0, by = "stop_id")
+stop_order_0 <- stop_order_0 %>% 
+  group_by(parent_id.V1) %>% 
+  filter(arrival_time == min(arrival_time)) %>% 
+  arrange(arrival_time) %>%
+  as.data.table()
 stop_order_0$stop_order <- 1:nrow(stop_order_0)
+
+# table for direction 1
 stop_order_1 <- stop_times_1[,.("arrival_time" = min(arrival_time)), stop_id][order(arrival_time)]
+# merge in parent ids and reorder only using parent ids
+stop_order_1 <- merge(stop_order_1, stop_parent_ids_1, by = "stop_id")
+stop_order_1 <- stop_order_1 %>% 
+  group_by(parent_id.V1) %>% 
+  filter(arrival_time == min(arrival_time)) %>% 
+  arrange(arrival_time) %>%
+  as.data.table()
 stop_order_1$stop_order <- 1:nrow(stop_order_1)
 ```
 
@@ -220,6 +260,7 @@ column_check_fun <- function(time_values) {
 # run checks on columns
 col_checks <- apply(X = stop_times_0_wide[,c(-1,-2)], MARGIN = 2, FUN = column_check_fun)
 
+That did fix our column issues. So now lets check by row.
 
 
 
