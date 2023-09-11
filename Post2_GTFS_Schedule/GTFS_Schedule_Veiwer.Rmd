@@ -258,7 +258,79 @@ column_check_fun <- function(time_values) {
 }
 
 # run checks on columns
-col_checks <- apply(X = stop_times_0_wide[,c(-1,-2)], MARGIN = 2, FUN = column_check_fun)
+col_checks <- apply(X = stop_times_0_wide[,c(-1,-2,-3)], MARGIN = 2, FUN = column_check_fun)
+
+# see if all values are true or not
+all(col_checks)
+
+# we have false values so lets extrac the trips with an error and perform a more indepth analysis 
+trip_errors <- which(col_checks == F)
+
+# go through each trip and return the lead stop(s) that is causing the issue
+trip_errors <- lapply(trip_errors, FUN = function(x) {
+  
+  # subset for trip, order by stop order, and find diff in stop sequence
+  temp <- stop_times_0[trip_order == x][order(stop_order), diff(x = stop_sequence)]
+  
+  # find vlue that does not equal 1 (diff in the sequence should always be 1)
+  hold <- (which(temp != 1):length(temp)) + 1 # add 1 to get the actual stop with the issue, we want all values after this as well
+  
+  # return the stop information with the issue
+  stop_times_0[trip_order == x][order(stop_order)][hold]
+  
+}) %>%
+  do.call(rbind, .)
+
+# find which stops are causing the issue
+stops_to_change <- trip_errors[,unique(stop_id)]
+
+# assume that placing these stops at some higger stop order should produce the correct results, will loop through each attempt until all times are correct or fail after going through the complete stop order
+lapply(stops_to_change, FUN = function(stops_change) {
+  
+  # create new stop order by starting by placing the change stop in the first postion and working down until the times are in the correct order
+  i <- 1
+  while (i < nrow(stop_times_0_wide)) {
+    # find current stop order
+    cur_stop_order <- stop_times_0_wide[Stop_ID == stops_change]$`Stop Order`
+    # make desired stop order one value higher
+     stop_times_0_wide[`Stop Order` == cur_stop_order - 1]$`Stop Order` <- cur_stop_order
+    # change the stop order postion
+    stop_times_0_wide[Stop_ID == stops_change]$`Stop Order` <- cur_stop_order - 1
+    # save current version of stop times 0 wide to global env
+    stop_times_0_wide <<- stop_times_0_wide[order(`Stop Order`)]
+    # rerun col checks and see if all values are true
+    col_checks <- apply(X = stop_times_0_wide[,c(-1,-2,-3)], MARGIN = 2, 
+                        FUN = column_check_fun)
+    # increase postion
+    i <- i + 1
+    # break if all values are true, if not repeat with the next position
+    if (all(col_checks)) {
+      print('found')
+      break
+    }
+    
+  }
+  
+  
+})
+
+# remake stop order starting from 1
+stop_times_0_wide$`Stop Order` <- 1:nrow(stop_times_0_wide)
+
+
+```
+
+Recheck and make sure that fixed the issue or not.
+
+```{r}
+# run checks on columns
+col_checks <- apply(X = stop_times_0_wide[,c(-1,-2,-3)], MARGIN = 2, FUN = column_check_fun)
+
+# see if all values are true or not
+all(col_checks)
+
+
+```
 
 That did fix our column issues. So now lets check by row.
 
