@@ -200,16 +200,16 @@ stop_times_1 <- merge(stop_times_1,
 
 ```{r, out.width="100%"}
 # create table for direction 0 by casting to wide format
-stop_times_0_wide <- data.table::dcast.data.table(data = stop_times_0, formula = stop_order+stop_name ~ trip_order, value.var = "arrival_time")
+stop_times_0_wide <- data.table::dcast.data.table(data = stop_times_0, formula = stop_order+stop_name+stop_id ~ trip_order, value.var = "arrival_time")
 # clean colnames
-colnames(stop_times_0_wide) <- c("Stop Order", "Stop Names", 
-                            paste0("Trip_", 1:(length(stop_times_0_wide)-2)))
+colnames(stop_times_0_wide) <- c("Stop Order", "Stop Names","Stop_ID", 
+                            paste0("Trip_", 1:(length(stop_times_0_wide)-3)))
 
 # create table for direction 0 by casting to wide format
-stop_times_1_wide <- data.table::dcast.data.table(data = stop_times_1, formula = stop_order+stop_name ~ trip_order, value.var = "arrival_time")
+stop_times_1_wide <- data.table::dcast.data.table(data = stop_times_1, formula = stop_order+stop_name+stop_id ~ trip_order, value.var = "arrival_time")
 # clean colnames
-colnames(stop_times_1_wide) <- c("Stop Order", "Stop Names", 
-                            paste0("Trip_", 1:(length(stop_times_1_wide)-2)))
+colnames(stop_times_1_wide) <- c("Stop Order", "Stop Names","Stop_ID", 
+                            paste0("Trip_", 1:(length(stop_times_1_wide)-3)))
 
 
 ```
