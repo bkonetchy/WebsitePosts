@@ -334,7 +334,53 @@ all(col_checks)
 
 That did fix our column issues. So now lets check by row.
 
+```{r}
+# create a function to check all values in a column
+row_check_fun <- function(time_values) {
+  
+  # remove any nas from vector (effectivly removes stops not being stopped at)
+  time_values <- time_values[!is.na(time_values)]
+  
+  # lag vector
+  lag_vect <- time_values[1:(length(time_values)-1)]
+  # lead vector
+  lead_vector <- time_values[2:length(time_values)]
+  # check if the lead value is greater than the lag value
+  test <- lead_vector > lag_vect
+  return(test)
+}
 
+# run checks on columns
+row_checks <- apply(X = stop_times_0_wide[,c(-1,-2,-3)], MARGIN = 1, FUN = row_check_fun)
+
+# see if all values are true or not
+all(row_checks %>% unlist())
+
+# find trip numbers that are the issue
+lapply(row_checks, function(x) {which(x != T)})
+
+
+
+# we have false values so lets extrac the trips with an error and perform a more indepth analysis 
+row_errors <- which(row_checks == F)
+
+# go through each trip and return the lead stop(s) that is causing the issue
+row_errors <- lapply(row_errors, FUN = function(x) {
+  
+  # subset for trip, order by stop order, and find diff in stop sequence
+  temp <- stop_times_0[trip_order == x][order(stop_order), diff(x = stop_sequence)]
+  
+  # find vlue that does not equal 1 (diff in the sequence should always be 1)
+  hold <- (which(temp != 1):length(temp)) + 1 # add 1 to get the actual stop with the issue, we want all values after this as well
+  
+  # return the stop information with the issue
+  stop_times_0[trip_order == x][order(stop_order)][hold]
+  
+}) %>%
+  do.call(rbind, .)
+
+# find which stops are causing the issue
+stops_to_change <- trip_errors[,unique(stop_id)]
 
 ```
 
