@@ -109,25 +109,25 @@ stop_ids_1 <- route_222$stop_times[trip_id %in% trip_ids_1]$stop_id
 stop_times_0 <- route_222$stop_times[trip_id %in% trip_ids_0]
 stop_times_1 <- route_222$stop_times[trip_id %in% trip_ids_1]
 
-# stop parent ids, if they are listed in the gtfs we can use, if not we can create ourselves useing the german station id system
-stop_parent_ids <- gtfstools::get_parent_station(gtfs = route_222)
-stop_parent_ids
-# parent stations do not extis so we will create ourselves
-stop_parent_ids_0 <- data.table("stop_id" = stop_ids_0,
-                                "parent_id" = lapply(X = stop_ids_0, 
-                                                     FUN = function(x) {
-                                                       stringr::str_split_1(string = x, 
-                                                                            pattern = "::")}) %>% 
+# parent stations do not extis in the GTFS feed so we will create ourselves
+# GTFS feed uses a standard german naming system for stops making it easy to obtain the parent station values
+stop_parent_ids_0 <- 
+  data.table("stop_id" = stop_ids_0,
+             "parent_id" = lapply(X = stop_ids_0, 
+                                  FUN = function(x) {
+                                    stringr::str_split_1(string = x, 
+                                                         pattern = "::")}) %>% 
                                   do.call(rbind, .) %>% 
                                   as.data.frame() %>% 
                                   select(1)) %>%
   distinct()
 
-stop_parent_ids_1 <- data.table("stop_id" = stop_ids_1,
-                                "parent_id" = lapply(X = stop_ids_1, 
-                                                     FUN = function(x) {
-                                                       stringr::str_split_1(string = x, 
-                                                                            pattern = "::")}) %>% 
+stop_parent_ids_1 <- 
+  data.table("stop_id" = stop_ids_1,
+             "parent_id" = lapply(X = stop_ids_1, 
+                                  FUN = function(x) {
+                                    stringr::str_split_1(string = x, 
+                                                         pattern = "::")}) %>% 
                                   do.call(rbind, .) %>% 
                                   as.data.frame() %>% 
                                   select(1)) %>%
@@ -320,7 +320,7 @@ lapply(stops_to_change, FUN = function(stops_change) {
   # create new stop order by starting by placing the change stop in the first postion and working down until the times are in the correct order
   i <- 1
   while (i < nrow(stop_times_0_wide)) {
-    print(i)
+    #print(i)
     # find current stop order
     cur_stop_order <- stop_times_0_wide[Stop_ID == stops_change]$`Stop Order`
     # make desired stop order one value higher
@@ -462,7 +462,6 @@ lapply(row_checks, FUN = function(col_name) {
     if (all(row_checks %>% unlist(), na.rm = T)) {
       break
     }
-    print(i)
   }
 })
 ```
