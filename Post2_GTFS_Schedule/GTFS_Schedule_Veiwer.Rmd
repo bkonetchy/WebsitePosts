@@ -310,8 +310,6 @@ lapply(stops_to_change, FUN = function(stops_change) {
     }
     
   }
-  
-  
 })
 
 # remake stop order starting from 1
@@ -338,8 +336,17 @@ That did fix our column issues. So now lets check by row.
 # create a function to check all values in a column
 row_check_fun <- function(time_values) {
   
+  if (all(is.na(time_values))) {
+    return(NA)
+  }
+  
   # remove any nas from vector (effectivly removes stops not being stopped at)
   time_values <- time_values[!is.na(time_values)]
+  
+  # check if time value only has 1 value then return NA
+  if (length(time_values) == 1) {
+    return(NA)
+  }
   
   # lag vector
   lag_vect <- time_values[1:(length(time_values)-1)]
