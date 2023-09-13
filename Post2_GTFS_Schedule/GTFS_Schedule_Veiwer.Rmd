@@ -369,8 +369,8 @@ row_checks <- lapply(row_checks, function(x) {
   # find all trips that failed
   temp <- which(x != T)
   
-  # find vlue that does not equal 1 (diff in the sequence should always be 1)
-  hold <- (which(temp != 1):length(temp)) + 1 # add 1 to get the actual stop with the issue, we want all values after this as well
+  # get the names of the trips
+  names(temp)
   
   }) %>%
   unlist() %>%
@@ -380,11 +380,42 @@ row_checks <- lapply(row_checks, function(x) {
 # move each trip earlier in the schedule and check if that fixes the issue or not. assumption is that they would have to occur earlier to work.
 lapply(row_checks, FUN = function(col_name) {
   
-}) %>%
-  do.call(rbind, .)
+  # create new stop order by starting by placing the change stop in the first postion and working down until the times are in the correct order
+  
+  # find current stop order
+  cur_trip_number <- gsub(pattern = "Trip_", replacement = "", x = col_name) %>%
+      as.integer()
+  i <- cur_trip_number
+  while (i > 0) {
+    # extract vector of time table data
+    cur_trip_column <- stop_times_0_wide[,paste0("Trip_", i), with = F] %>%
+      unlist()
+    # previous trip col time table data
+    prev_trip_column <- stop_times_0_wide[,paste0("Trip_", i - 1), with = F] %>%
+      unlist()
+    # replace cur column with prev column
+    stop_times_0_wide[,paste0("Trip_", i)] <- prev_trip_column
+    # replace cur trip column with prev column location
+    stop_times_0_wide[,paste0("Trip_", i-1)] <- cur_trip_column
+    # save current version of stop times 0 wide to global env
+    stop_times_0_wide <<- stop_times_0_wide
+    # run row check on the two change rows and see if that fixed the issue or not
+    row_checks <- apply(X = stop_times_0_wide[,4:(i+3)], MARGIN = 1, 
+                        FUN = row_check_fun)
+    # increase postion
+    i <- i - 1
+    # break if all values are true, if not repeat with the next position
+    if (all(row_checks %>% unlist(), na.rm = T)) {
+      break
+    }
+    print(i)
+  }
+})
 
-# find which stops are causing the issue
-stops_to_change <- trip_errors[,unique(stop_id)]
+
+row_checks <- apply(X = stop_times_0_wide[,c(-1,-2,-3)], MARGIN = 1, FUN = row_check_fun, simplify = F)
+
+all(row_checks %>% unlist(), na.rm = T)
 
 ```
 
