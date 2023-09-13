@@ -358,30 +358,27 @@ row_check_fun <- function(time_values) {
 }
 
 # run checks on columns
-row_checks <- apply(X = stop_times_0_wide[,c(-1,-2,-3)], MARGIN = 1, FUN = row_check_fun)
+row_checks <- apply(X = stop_times_0_wide[,c(-1,-2,-3)], MARGIN = 1, FUN = row_check_fun, simplify = F)
 
 # see if all values are true or not
-all(row_checks %>% unlist())
+all(row_checks %>% unlist(), na.rm = T)
 
 # find trip numbers that are the issue
-lapply(row_checks, function(x) {which(x != T)})
-
-
-
-# we have false values so lets extrac the trips with an error and perform a more indepth analysis 
-row_errors <- which(row_checks == F)
-
-# go through each trip and return the lead stop(s) that is causing the issue
-row_errors <- lapply(row_errors, FUN = function(x) {
+row_checks <- lapply(row_checks, function(x) {
   
-  # subset for trip, order by stop order, and find diff in stop sequence
-  temp <- stop_times_0[trip_order == x][order(stop_order), diff(x = stop_sequence)]
+  # find all trips that failed
+  temp <- which(x != T)
   
   # find vlue that does not equal 1 (diff in the sequence should always be 1)
   hold <- (which(temp != 1):length(temp)) + 1 # add 1 to get the actual stop with the issue, we want all values after this as well
   
-  # return the stop information with the issue
-  stop_times_0[trip_order == x][order(stop_order)][hold]
+  }) %>%
+  unlist() %>%
+  unique() %>%
+  gtools::mixedsort()
+
+# move each trip earlier in the schedule and check if that fixes the issue or not. assumption is that they would have to occur earlier to work.
+lapply(row_checks, FUN = function(col_name) {
   
 }) %>%
   do.call(rbind, .)
