@@ -517,83 +517,77 @@ For the pdf version we will use [gridExtra](https://cran.r-project.org/web/packa
 library(gridExtra)
 library(grid)
 
-# estimate page 1 table, that includes the first row
-page_1_width <- tableGrob(d = stop_times_0_wide[1:30,c(-1,-3)][,1:15], 
+page_width <- 11
+page_height <- 8.5
+page_margin <- 0.5
+
+# create a loop to determine how many columns (trips) can be selected for each page
+table_width <- 0
+trips_per_page <- 1
+while (page_width - page_margin > table_width) {
+  
+  # calculate page width starting with one column at a time
+  table_width <- tableGrob(d = stop_times_0_wide[,c(-1,-3)][,1:trips_per_page], 
                           rows = NULL, 
                           theme = ttheme_default(base_size = 8))
-
-page_1_width <- grid::convertWidth(x = sum(page_1_width$widths), 
+  
+  table_width <- grid::convertWidth(x = sum(table_width$widths), 
                                    unitTo = "inches", 
                                    valueOnly = T)
+  
+  trips_per_page <- trips_per_page + 1
+  table_width <<- table_width
+  
+}
+# subtract 1 from trips per page so we dont exceed the page size
+trips_per_page <- trips_per_page - 1
 
-# estimate the width of all other pages that dont include column 1
-page_2_width <- tableGrob(d = stop_times_0_wide[1:30,c(-1,-3)][,16:33], 
+# calculate number of stops per page
+table_height <- 0
+stops_per_page <- 1
+while (page_height - page_margin > table_height) {
+  
+  # calculate page width starting with one column at a time
+  table_height <- tableGrob(d = stop_times_0_wide[1:stops_per_page,c(-1,-3)], 
                           rows = NULL, 
                           theme = ttheme_default(base_size = 8))
-
-page_2_width <- grid::convertWidth(x = sum(page_2_width$widths), 
+  
+  table_height <- grid::convertWidth(x = sum(table_height$heights), 
                                    unitTo = "inches", 
                                    valueOnly = T)
+  
+  stops_per_page <- stops_per_page + 1
+  table_height <<- table_height
+  
+}
+# subtract 1 from stops per page so we dont exceed the page size
+stops_per_page <- stops_per_page - 1
 
-# estimate the nrows to fit our height parameter
-page_height <- tableGrob(d = stop_times_0_wide[1:32,c(-1,-3)][,1:15], 
-                          rows = NULL, 
-                          theme = ttheme_default(base_size = 8))
+# calculate the seq of trips per page
+trips_seq_start <- seq(1,length(stop_times_0_wide)-2,trips_per_page)
+trips_seq_end <- c(trips_seq_start[-1] - 1, length(stop_times_0_wide)-2)
 
-page_height <- grid::convertWidth(x = sum(page_height$heights), 
-                                   unitTo = "inches", 
-                                   valueOnly = T)
+# calculate the seq of stops per page
+stops_seq_start <- seq(1,nrow(stop_times_0_wide),stops_per_page)
+stops_seq_end <- c(stops_seq_start[-1] - 1, nrow(stop_times_0_wide))
 
-
-# calculate the number of pages needed to fit all trips
-ncol_page1 <- 
-
-
-
-
-pdf("table.pdf", width = 11, height = 8.5)
-lapply(1:7, FUN = function(x) {
-  start_col <- (x*16)-15
-  end_col <- x*16
-  if (end_col >= (length(stop_times_0_wide)-2)) {
-    end_col <- length(stop_times_0_wide)-2
-  }
-  grid.arrange(
-  tableGrob(d = stop_times_0_wide[1:32,c(-1,-3)][,c(start_col:end_col), with=F], 
-            rows = NULL, 
-            theme = ttheme_default(base_size = 8))
-)
+# create two loops, outer loop for stops and and inner loop for trips.
+pdf("table.pdf", width = page_width, height = page_height)
+# outer loop for stops
+mapply(start_stops = stops_seq_start, end_stops = stops_seq_end, 
+       FUN = function(start_stops, end_stops) {
+         # inner loop for trips
+         mapply(trips_start = trips_seq_start, trips_end = trips_seq_end, 
+                FUN = function(trips_start, trips_end) {
+                  grid.arrange(
+                    tableGrob(d = stop_times_0_wide[start_stops:end_stops,c(-1,-3)][,c(trips_start:trips_end), with = F], 
+                              rows = NULL, 
+                              theme = ttheme_default(base_size = 8))
+                  )
+                })
+         
 })
 dev.off()
-
-grid.arrange(
-  tableGrob(d = stop_times_0_wide[1:32,c(-1,-3)][,c(1:15)], 
-            rows = NULL, 
-            theme = ttheme_default(base_size = 8))
-)
-grid.arrange(
-  tableGrob(d = stop_times_0_wide[1:32,c(-1,-3)][,c(16:30)], 
-            rows = NULL, 
-            theme = ttheme_default(base_size = 8))
-)
-grid.arrange(
-  tableGrob(d = stop_times_0_wide[1:32,c(-1,-3)][,c(33:45)], 
-            rows = NULL, 
-            theme = ttheme_default(base_size = 8))
-)
-grid.arrange(
-  tableGrob(d = stop_times_0_wide[1:32,c(-1,-3)][,c(46:45)], 
-            rows = NULL, 
-            theme = ttheme_default(base_size = 8))
-)
-grid.arrange(
-  tableGrob(d = stop_times_0_wide[c(1,33:63),c(-1,-3)][,c(1:15)], 
-            rows = NULL, 
-            theme = ttheme_default(base_size = 8))
-)
-dev.off()
-
-
 
 ```
 
