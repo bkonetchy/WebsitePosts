@@ -1,0 +1,9 @@
+---
+title: "Magnus Archive Dashboard"
+author: "Brant Konetchy"
+date: "2020-08-23"
+categories: ["R"]
+tags: ["R", "leaflet", "ggplot", "database", "Shiny"]
+---
+
+# 
