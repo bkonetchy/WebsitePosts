@@ -478,6 +478,125 @@ The code worked and everything appears to be in the correct stop and trip order.
 
 ## Step 6: Clean Up Table for Final Version
 
+We are going to clean up a bit more and then produce two versions.
+
+-   webpage friendly version that is easy to read and scroll through.
+
+-   print friendly version that can saved as a pdf.
+
+### Web version
+
+For the web version we will use the reactable package and and a few customizations.
+
+```{r}
+# clean up trip column  names
+colnames(stop_times_0_wide)[4:length(stop_times_0_wide)] <- gsub(pattern = "_",
+                                                                 replacement = " ",
+                                                                 x = colnames(stop_times_0_wide)[4:length(stop_times_0_wide)])
+# remove the stop id and stop order values
+reactable(data = stop_times_0_wide[,c(-1,-3), with = F], 
+          pagination = F, 
+          height = 800,
+          defaultColDef = colDef(
+            align = "center"
+          ),
+          columns = list(
+            `Stop Name` = colDef(align = 'left', 
+                                  width = 250)
+          ),
+          theme = reactableTheme(color = "black")) %>%
+  add_title("Bus Line 222 Time Table") %>%
+  add_subtitle("Direction 0")
+```
+
+### PDF version
+
+For the pdf version we will use gridExtra and with some upfront calculations to produce an automated pdf table.
+
+```{r}
+library(gridExtra)
+library(grid)
+
+# estimate page 1 table, that includes the first row
+page_1_width <- tableGrob(d = stop_times_0_wide[1:30,c(-1,-3)][,1:15], 
+                          rows = NULL, 
+                          theme = ttheme_default(base_size = 8))
+
+page_1_width <- grid::convertWidth(x = sum(page_1_width$widths), 
+                                   unitTo = "inches", 
+                                   valueOnly = T)
+
+# estimate the width of all other pages that dont include column 1
+page_2_width <- tableGrob(d = stop_times_0_wide[1:30,c(-1,-3)][,16:33], 
+                          rows = NULL, 
+                          theme = ttheme_default(base_size = 8))
+
+page_2_width <- grid::convertWidth(x = sum(page_2_width$widths), 
+                                   unitTo = "inches", 
+                                   valueOnly = T)
+
+# estimate the nrows to fit our height parameter
+page_height <- tableGrob(d = stop_times_0_wide[1:32,c(-1,-3)][,1:15], 
+                          rows = NULL, 
+                          theme = ttheme_default(base_size = 8))
+
+page_height <- grid::convertWidth(x = sum(page_height$heights), 
+                                   unitTo = "inches", 
+                                   valueOnly = T)
+
+
+# calculate the number of pages needed to fit all trips
+ncol_page1 <- 
+
+
+
+
+pdf("table.pdf", width = 11, height = 8.5)
+lapply(1:7, FUN = function(x) {
+  start_col <- (x*16)-15
+  end_col <- x*16
+  if (end_col >= (length(stop_times_0_wide)-2)) {
+    end_col <- length(stop_times_0_wide)-2
+  }
+  grid.arrange(
+  tableGrob(d = stop_times_0_wide[1:32,c(-1,-3)][,c(start_col:end_col), with=F], 
+            rows = NULL, 
+            theme = ttheme_default(base_size = 8))
+)
+})
+dev.off()
+
+grid.arrange(
+  tableGrob(d = stop_times_0_wide[1:32,c(-1,-3)][,c(1:15)], 
+            rows = NULL, 
+            theme = ttheme_default(base_size = 8))
+)
+grid.arrange(
+  tableGrob(d = stop_times_0_wide[1:32,c(-1,-3)][,c(16:30)], 
+            rows = NULL, 
+            theme = ttheme_default(base_size = 8))
+)
+grid.arrange(
+  tableGrob(d = stop_times_0_wide[1:32,c(-1,-3)][,c(33:45)], 
+            rows = NULL, 
+            theme = ttheme_default(base_size = 8))
+)
+grid.arrange(
+  tableGrob(d = stop_times_0_wide[1:32,c(-1,-3)][,c(46:45)], 
+            rows = NULL, 
+            theme = ttheme_default(base_size = 8))
+)
+grid.arrange(
+  tableGrob(d = stop_times_0_wide[c(1,33:63),c(-1,-3)][,c(1:15)], 
+            rows = NULL, 
+            theme = ttheme_default(base_size = 8))
+)
+dev.off()
+
+
+
+```
+
 ### Check 3: Manual Time Table Checks
 
 Now that we have a clean table that is easy to read, lets us do one more check by looking at the printed time table created by the BVG () compared to ours. Its best to do some spot checking here to ensure that nothing is critically wrong, but may not be worth the effort to go line by line.
